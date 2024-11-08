@@ -1,6 +1,5 @@
 "use client";
 import { useState, useCallback, useEffect } from "react";
-import dictionaryJson from "../../../assets/words_dictionary.json";
 import { io } from "socket.io-client";
 
 const dictionary = dictionaryJson as unknown as Dictionary;
