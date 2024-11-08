@@ -1,6 +1,7 @@
 "use client";
 import { useState, useCallback, useEffect } from "react";
 import dictionaryJson from "../../../assets/words_dictionary.json";
+import { io } from "socket.io-client";
 
 const dictionary = dictionaryJson as unknown as Dictionary;
 
@@ -8,27 +9,37 @@ interface Dictionary {
   [word: string]: boolean;
 }
 
-export default function Home() {
+let socket: any;
+
+export default function Home({ params }: { params: { gameId: string } }) {
+  const id = params.gameId; // Extract room ID from the URL
+
   const [currentword, setCurrentWord] = useState<string>("");
   const [randomString, setRandomString] = useState<string>("");
   const [resultString, setResultString] = useState<string>("");
-
-  const pickRandomStr = () => {
-    const keys = Object.keys(dictionary);
-    const randomWord = keys[Math.floor(Math.random() * keys.length)];
-
-    if (randomWord.length >= 3) {
-      const startIdx = Math.floor(Math.random() * (randomWord.length - 2));
-      const randomSubstring = randomWord.substring(startIdx, startIdx + 3);
-      setRandomString(randomSubstring);
-    } else {
-      setRandomString(randomWord);
-    }
-  };
+  const [userCount, setUserCount] = useState<number>(0);
 
   useEffect(() => {
-    pickRandomStr();
-  }, []);
+    if (!id) return;
+    socket = io("http://localhost:8000");
+
+    socket.on("connect", () => {
+      console.log("Connected to socket server");
+      socket.emit("joinRoom", id);
+    });
+
+    socket.on("userCount", (count: number) => {
+      setUserCount(count);
+    });
+
+    socket.on("randomString", (sharedString: string) => {
+      setRandomString(sharedString);
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [id]);
 
   const submitWord = useCallback(
     (e: React.FormEvent<HTMLFormElement>) => {
@@ -36,17 +47,20 @@ export default function Home() {
       if (dictionary[currentword] && currentword.includes(randomString)) {
         setResultString("Word exists!");
         setCurrentWord("");
-        pickRandomStr();
+
+        // Emit the  to inform the server of the correct answer
+        socket.emit("correctAnswer", id);
       } else {
         setResultString("Try again!");
       }
     },
-    [currentword, randomString]
+    [currentword, randomString, id]
   );
 
   return (
     <div className="flex flex-col justify-center items-center h-screen bg-[#DFF2EB] font-sans">
       <h1 className="text-4xl mb-8 text-gray-800 font-bold">Word Game</h1>
+      <div>User count: {userCount}</div>
       <div className="text-5xl font-bold text-blue-500 mb-8 pb-5 p-3 rounded-lg bg-white shadow-lg">
         {randomString}
       </div>
@@ -74,7 +88,6 @@ export default function Home() {
             onClick={() => {
               setResultString("");
               setCurrentWord("");
-              pickRandomStr();
             }}
           >
             Reset
