@@ -2,8 +2,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { io } from "socket.io-client";
 
-const dictionary = dictionaryJson as unknown as Dictionary;
-
 interface Dictionary {
   [word: string]: boolean;
 }
@@ -43,7 +41,7 @@ export default function Home({ params }: { params: { gameId: string } }) {
   const submitWord = useCallback(
     (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
-      if (dictionary[currentword] && currentword.includes(randomString)) {
+      if (currentword.includes(randomString)) {
         setResultString("Word exists!");
         setCurrentWord("");
 
