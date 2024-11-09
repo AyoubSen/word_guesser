@@ -1,28 +1,29 @@
 "use client";
 import { useState, useCallback, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { io } from "socket.io-client";
-
-interface Dictionary {
-  [word: string]: boolean;
-}
 
 let socket: any;
 
 export default function Home({ params }: { params: { gameId: string } }) {
   const id = params.gameId; // Extract room ID from the URL
+  const searchParams = useSearchParams();
+  const userName = searchParams.get("userName") || "Anonymous"; // Default if not provided
 
   const [currentword, setCurrentWord] = useState<string>("");
   const [randomString, setRandomString] = useState<string>("");
   const [resultString, setResultString] = useState<string>("");
   const [userCount, setUserCount] = useState<number>(0);
+  const [users, setUsers] = useState<string[]>([]);
 
   useEffect(() => {
     if (!id) return;
+
     socket = io("http://localhost:8000");
 
     socket.on("connect", () => {
       console.log("Connected to socket server");
-      socket.emit("joinRoom", id);
+      socket.emit("joinRoom", { roomId: id, userName });
     });
 
     socket.on("userCount", (count: number) => {
@@ -33,31 +34,40 @@ export default function Home({ params }: { params: { gameId: string } }) {
       setRandomString(sharedString);
     });
 
+    socket.on("userList", (userList: string[]) => {
+      setUsers(userList);
+    });
+
     return () => {
       socket.disconnect();
     };
-  }, [id]);
+  }, [id, userName]);
 
   const submitWord = useCallback(
     (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
-      if (currentword.includes(randomString)) {
-        setResultString("Word exists!");
-        setCurrentWord("");
+      socket.emit("correctAnswerAttempt", {
+        roomId: id,
+        submittedWord: currentword,
+      });
 
-        // Emit the  to inform the server of the correct answer
-        socket.emit("correctAnswer", id);
-      } else {
-        setResultString("Try again!");
-      }
+      socket.on("answerResult", ({ correct }: any) => {
+        if (correct) {
+          setResultString("Word exists!");
+        } else {
+          setResultString("Invalid word or doesn't meet criteria!");
+        }
+        setCurrentWord("");
+      });
     },
-    [currentword, randomString, id]
+    [currentword, id]
   );
 
   return (
     <div className="flex flex-col justify-center items-center h-screen bg-[#DFF2EB] font-sans">
       <h1 className="text-4xl mb-8 text-gray-800 font-bold">Word Game</h1>
       <div>User count: {userCount}</div>
+      <div className="text-lg mb-4">Connected users: {users.join(", ")}</div>
       <div className="text-5xl font-bold text-blue-500 mb-8 pb-5 p-3 rounded-lg bg-white shadow-lg">
         {randomString}
       </div>
