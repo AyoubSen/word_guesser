@@ -61,7 +61,7 @@ export default function Page() {
           type="submit"
           className="bg-[#7AB2D3] p-3 rounded text-white font-bold hover:bg-[#61a2c9]"
         >
-          Start a game
+          Create a game
         </button>
       </form>
     </div>

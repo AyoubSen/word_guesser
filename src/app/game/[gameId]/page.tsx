@@ -28,6 +28,7 @@ export default function Home({ params }: { params: { gameId: string } }) {
 
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  const defaultTimer: number = 10;
   useEffect(() => {
     if (!id) return;
 
@@ -45,7 +46,7 @@ export default function Home({ params }: { params: { gameId: string } }) {
     socket.on("randomString", (sharedString: string) => {
       if (!gameOver) {
         setRandomString(sharedString);
-        setTimer(3);
+        setTimer(defaultTimer);
 
         if (timerIntervalRef.current) {
           clearInterval(timerIntervalRef.current);
@@ -165,17 +166,19 @@ export default function Home({ params }: { params: { gameId: string } }) {
                 value={currentword}
                 onChange={(event) => setCurrentWord(event.target.value)}
                 placeholder="Enter a word containing the above letters"
-                disabled={gameOver}
+                disabled={gameOver || !isTimerRunning}
               />
-              <div className="flex justify-between w-full">
+              <div className="flex justify-center w-full">
                 <button
                   type="submit"
-                  className="p-3 bg-green-500 text-white font-bold rounded transition duration-300 hover:bg-green-600"
-                  disabled={gameOver}
+                  className={`p-3 bg-green-500 text-white font-bold rounded transition duration-300 hover:bg-green-600 ${
+                    gameOver || !isTimerRunning ? "cursor-not-allowed " : ""
+                  }`}
+                  disabled={gameOver || !isTimerRunning}
                 >
                   Submit
                 </button>
-                <button
+                {/* <button
                   type="button"
                   className="p-3 bg-red-500 text-white font-bold rounded transition duration-300 hover:bg-red-600"
                   onClick={() => {
@@ -185,7 +188,7 @@ export default function Home({ params }: { params: { gameId: string } }) {
                   disabled={gameOver}
                 >
                   Reset
-                </button>
+                </button> */}
               </div>
             </form>
           )}
