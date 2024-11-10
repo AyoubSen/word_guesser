@@ -2,13 +2,18 @@
 import { useState, useCallback, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { io } from "socket.io-client";
-
+import dictionaryJson from "@/assets/words_dictionary.json";
 let socket: any;
 
+interface Dictionary {
+  [word: string]: boolean;
+}
+
+const dictionary = dictionaryJson as unknown as Dictionary;
 export default function Home({ params }: { params: { gameId: string } }) {
-  const id = params.gameId; // Extract room ID from the URL
+  const id = params.gameId;
   const searchParams = useSearchParams();
-  const userName = searchParams.get("userName") || "Anonymous"; // Default if not provided
+  const userName = searchParams.get("userName") || "Anonymous";
 
   const [currentword, setCurrentWord] = useState<string>("");
   const [randomString, setRandomString] = useState<string>("");
@@ -46,19 +51,21 @@ export default function Home({ params }: { params: { gameId: string } }) {
   const submitWord = useCallback(
     (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
-      socket.emit("correctAnswerAttempt", {
-        roomId: id,
-        submittedWord: currentword,
-      });
+      if (!currentword) {
+        setResultString("Please enter a word!");
+        return;
+      }
 
-      socket.on("answerResult", ({ correct }: any) => {
-        if (correct) {
-          setResultString("Word exists!");
-        } else {
-          setResultString("Invalid word or doesn't meet criteria!");
-        }
+      if (dictionary[currentword] && currentword.includes(randomString)) {
+        socket.emit("correctAnswerAttempt", {
+          roomId: id,
+          submittedWord: currentword,
+        });
+        setResultString("Word exists!");
         setCurrentWord("");
-      });
+      } else {
+        setResultString("Try again!");
+      }
     },
     [currentword, id]
   );
