@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { io } from "socket.io-client";
 import dictionaryJson from "@/assets/words_dictionary.json";
@@ -10,6 +10,7 @@ interface Dictionary {
 }
 
 const dictionary = dictionaryJson as unknown as Dictionary;
+
 export default function Home({ params }: { params: { gameId: string } }) {
   const id = params.gameId;
   const searchParams = useSearchParams();
@@ -20,6 +21,10 @@ export default function Home({ params }: { params: { gameId: string } }) {
   const [resultString, setResultString] = useState<string>("");
   const [userCount, setUserCount] = useState<number>(0);
   const [users, setUsers] = useState<string[]>([]);
+  const [timer, setTimer] = useState<number>(10);
+  const [isTimerRunning, setIsTimerRunning] = useState<boolean>(true);
+
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -37,6 +42,21 @@ export default function Home({ params }: { params: { gameId: string } }) {
 
     socket.on("randomString", (sharedString: string) => {
       setRandomString(sharedString);
+      setTimer(10);
+
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+      }
+      timerIntervalRef.current = setInterval(() => {
+        setTimer((prev) => {
+          if (prev < 1) {
+            clearInterval(timerIntervalRef.current!);
+            socket.emit("timeOver", { roomId: id });
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
     });
 
     socket.on("userList", (userList: string[]) => {
@@ -44,6 +64,9 @@ export default function Home({ params }: { params: { gameId: string } }) {
     });
 
     return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+      }
       socket.disconnect();
     };
   }, [id, userName]);
@@ -108,6 +131,29 @@ export default function Home({ params }: { params: { gameId: string } }) {
           </button>
         </div>
       </form>
+      <div className="flex flex-col gap-5">
+        <p className="mt-8 text-2xl font-bold text-gray-800">
+          Time left: {timer} seconds
+        </p>
+        <button
+          onClick={() => {
+            if (isTimerRunning) {
+              if (timerIntervalRef.current) {
+                clearInterval(timerIntervalRef.current);
+                timerIntervalRef.current = null;
+              }
+            }
+            setIsTimerRunning(!isTimerRunning);
+          }}
+          className={`p-3 font-bold rounded transition duration-300 ${
+            isTimerRunning
+              ? "bg-red-500 text-white hover:bg-red-600"
+              : "bg-green-500 text-white hover:bg-green-600"
+          }`}
+        >
+          {isTimerRunning ? "Pause Timer" : "Resume Timer"}
+        </button>
+      </div>
       {resultString && (
         <p className="mt-8 text-2xl font-bold text-gray-800">{resultString}</p>
       )}
