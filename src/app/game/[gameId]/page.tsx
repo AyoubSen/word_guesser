@@ -142,6 +142,17 @@ export default function Home({ params }: { params: { gameId: string } }) {
                 clearInterval(timerIntervalRef.current);
                 timerIntervalRef.current = null;
               }
+            } else {
+              timerIntervalRef.current = setInterval(() => {
+                setTimer((prev) => {
+                  if (prev < 1) {
+                    clearInterval(timerIntervalRef.current!);
+                    socket.emit("timeOver", { roomId: id });
+                    return 0;
+                  }
+                  return prev - 1;
+                });
+              }, 1000);
             }
             setIsTimerRunning(!isTimerRunning);
           }}
